@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans antialiased;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-600;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-slate-900 border border-slate-800 rounded-2xl p-6;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200 hover:border-eco-700 hover:shadow-lg hover:shadow-eco-900/20;
+  }
+
+  .btn-primary {
+    @apply bg-eco-600 hover:bg-eco-500 text-white font-semibold py-2.5 px-5 rounded-xl
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-eco-500 focus:ring-offset-2
+           focus:ring-offset-slate-950 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2.5 px-5 rounded-xl
+           border border-slate-700 transition-all duration-200 focus:outline-none focus:ring-2
+           focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-950;
+  }
+
+  .input-field {
+    @apply w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-500
+           rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-eco-500
+           focus:border-eco-500 transition-colors duration-200;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-slate-300 mb-1.5;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .stat-value {
+    @apply text-3xl font-bold text-white;
+  }
+
+  .stat-label {
+    @apply text-sm text-slate-400 mt-1;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-eco-400 to-eco-600 bg-clip-text text-transparent;
+  }
+
+  .glow-eco {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.15);
+  }
+}
+
+/* Chart tooltip styling */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
+  border-radius: 12px !important;
+  color: #f1f5f9 !important;
+}

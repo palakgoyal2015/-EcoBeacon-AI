@@ -1,0 +1,1051 @@
+================================================================================
+                         ECOBEACON AI — PROJECT DOCUMENTATION
+================================================================================
+Version: 1.0
+Date: 2026-04-29
+--------------------------------------------------------------------------------
+
+TABLE OF CONTENTS
+-----------------
+ 1. Project Overview
+ 2. Tech Stack
+ 3. Directory Structure
+ 4. Setup & Installation
+ 5. Environment Variables
+ 6. Database
+ 7. Backend Architecture
+    7.1  Entry Point (server.js)
+    7.2  Configuration
+    7.3  Models
+    7.4  Middleware
+    7.5  Routes
+    7.6  Controllers
+    7.7  Services
+    7.8  Utilities
+    7.9  Seed Data
+ 8. Frontend Architecture
+    8.1  Entry Point & App Shell
+    8.2  Routing & Route Guards
+    8.3  Auth Context
+    8.4  API Service (Axios)
+    8.5  Pages
+    8.6  Components
+    8.7  Utilities & Hooks
+ 9. AI / Recommendation Engine
+    9.1  Recommendation Generator
+    9.2  Emission Forecaster
+    9.3  Anomaly Detector
+    9.4  Weekly Goal Generator
+    9.5  Rule-Based Chat Bot
+10. Emission Factor Reference
+11. API Endpoint Reference
+12. Eco Score & Gamification
+13. Known Notes & Design Decisions
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+EcoBeacon AI is a full-stack web application for personal carbon footprint
+tracking and reduction. Users log daily activities across four categories
+(transportation, electricity, food, shopping), receive precise CO2 emission
+calculations, and get AI-powered recommendations to reduce their environmental
+impact.
+
+Key Features:
+  - Activity logging with real-time emission preview
+  - Natural language activity parser ("I drove 20km to work")
+  - GPS-based automatic trip tracker with transport mode detection
+  - Personalized AI recommendations, 7-day emission forecast, anomaly detection
+  - Eco Score (0-100) with streak tracking and achievement badges
+  - Interactive dashboard: charts, category breakdowns, forecasts
+  - Rule-based AI chat assistant
+  - Impact context (equivalencies: trees, phone charges, showers, etc.)
+
+================================================================================
+2. TECH STACK
+================================================================================
+
+Layer         | Technology
+--------------+--------------------------------------------------------------
+Frontend      | React 18, React Router v6, Tailwind CSS, Recharts, Axios
+Backend       | Node.js, Express 4, Sequelize 6, SQLite3
+Auth          | JWT (jsonwebtoken 30-day tokens), bcryptjs (12 salt rounds)
+Build Tool    | Vite 4
+Dev Server    | nodemon
+
+NOTE: The README.md and .env.example reference MongoDB/Mongoose. The actual
+implementation uses SQLite + Sequelize. No external database server is required.
+
+================================================================================
+3. DIRECTORY STRUCTURE
+================================================================================
+
+Project/
+├── README.md
+├── documentation.txtx               <- This file
+├── EcoBeacon_AI_Documentation.html  <- Pre-built HTML documentation
+│
+├── backend/
+│   ├── server.js                    <- Express entry point
+│   ├── package.json
+│   ├── .env / .env.example
+│   │
+│   ├── config/
+│   │   ├── db.js                    <- Sequelize authenticate + sync
+│   │   └── sequelize.js             <- SQLite Sequelize instance
+│   │
+│   ├── models/
+│   │   ├── User.js
+│   │   └── Activity.js
+│   │
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── activityController.js
+│   │   ├── emissionController.js
+│   │   └── aiController.js
+│   │
+│   ├── routes/
+│   │   ├── authRoutes.js
+│   │   ├── activityRoutes.js
+│   │   ├── emissionRoutes.js
+│   │   └── aiRoutes.js
+│   │
+│   ├── middleware/
+│   │   └── authMiddleware.js        <- JWT protect middleware
+│   │
+│   ├── services/
+│   │   ├── emissionService.js       <- Emission factor table + calculator
+│   │   └── aiService.js             <- Recommendation, forecast, anomaly engine
+│   │
+│   ├── utils/
+│   │   └── ecoScore.js              <- Score calculation, badges, streak logic
+│   │
+│   ├── seed/
+│   │   └── seedData.js              <- 3 demo users + 30 activities each
+│   │
+│   └── data/
+│       └── ecobeacon.sqlite         <- Auto-created SQLite database file
+│
+└── frontend/
+    ├── index.html
+    ├── package.json
+    ├── vite.config.js               <- Dev server on :5173, proxies /api → :5000
+    ├── tailwind.config.js
+    ├── postcss.config.js
+    └── src/
+        ├── main.jsx                 <- React 18 createRoot entry
+        ├── App.jsx                  <- Router + route guards
+        ├── index.css
+        │
+        ├── context/
+        │   └── AuthContext.jsx      <- Global auth state
+        │
+        ├── services/
+        │   └── api.js               <- Axios instance, token injection, 401 handler
+        │
+        ├── hooks/
+        │   └── useGeoTracker.js     <- GPS watch, distance, speed, mode detection
+        │
+        ├── utils/
+        │   ├── helpers.js           <- Activity config, emission factors, formatters
+        │   └── geoTracking.js       <- Haversine distance, transport mode classifier
+        │
+        ├── pages/
+        │   ├── Login.jsx
+        │   ├── Register.jsx
+        │   ├── Dashboard.jsx
+        │   ├── LogActivity.jsx
+        │   └── Profile.jsx
+        │
+        └── components/
+            ├── Navbar.jsx
+            ├── LoadingSpinner.jsx
+            ├── StatsCard.jsx
+            ├── EcoScoreGauge.jsx
+            ├── EmissionChart.jsx
+            ├── ActivityBreakdown.jsx
+            ├── SuggestionsPanel.jsx
+            ├── ForecastPanel.jsx
+            ├── BadgesPanel.jsx
+            ├── AIChat.jsx
+            ├── NLPActivityParser.jsx
+            ├── AutoTracker.jsx
+            └── ImpactContext.jsx
+
+================================================================================
+4. SETUP & INSTALLATION
+================================================================================
+
+Prerequisites
+-------------
+  - Node.js 18+
+  - No database server needed (SQLite is file-based)
+
+Backend Setup
+-------------
+  cd backend
+  npm install
+  cp .env.example .env
+  # Edit .env: set JWT_SECRET to a random secret string
+  npm run dev            # Starts on http://localhost:5000
+
+Frontend Setup
+--------------
+  cd frontend
+  npm install
+  npm run dev            # Starts on http://localhost:5173
+
+Seed Demo Data (optional)
+--------------------------
+  cd backend
+  npm run seed
+
+  Demo accounts created:
+    alex@ecobeacon.com   / password123
+    sam@ecobeacon.com    / password123
+    jordan@ecobeacon.com / password123
+
+  WARNING: The seed script calls sequelize.sync({ force: true }), which drops
+  and recreates all tables. Do not run on a database with real user data.
+
+================================================================================
+5. ENVIRONMENT VARIABLES
+================================================================================
+
+File: backend/.env  (copy from backend/.env.example)
+
+Variable         | Default                     | Description
+-----------------+-----------------------------+-------------------------------
+PORT             | 5000                        | Express server port
+JWT_SECRET       | (required)                  | Secret for signing JWTs
+CLIENT_URL       | http://localhost:5173        | Allowed CORS origin
+MONGO_URI        | (unused — legacy leftover)  | Not consumed by the app
+OPENAI_API_KEY   | (unused — legacy leftover)  | Not consumed; AI is rule-based
+
+================================================================================
+6. DATABASE
+================================================================================
+
+Engine: SQLite (file at backend/data/ecobeacon.sqlite)
+ORM:    Sequelize 6
+
+Tables are auto-created via sequelize.sync() on server startup. No migrations
+are required. The data directory is created automatically if it doesn't exist.
+
+Users Table
+-----------
+Column          | Type     | Notes
+----------------+----------+----------------------------------------------
+id              | INTEGER  | Auto-increment primary key
+name            | STRING   | Max 50 chars, required
+email           | STRING   | Unique, required, stored lowercase
+password        | STRING   | bcrypt hash (12 rounds)
+ecoScore        | FLOAT    | 0–100, default 50
+totalEmission   | FLOAT    | Cumulative kg CO2, default 0
+badges          | TEXT     | JSON-serialized array of badge objects
+streak          | INTEGER  | Consecutive days logged, default 0
+lastLogDate     | DATE     | Date of last logged activity
+createdAt       | DATE     | Auto-managed by Sequelize
+updatedAt       | DATE     | Auto-managed by Sequelize
+
+Activities Table
+----------------
+Column          | Type     | Notes
+----------------+----------+----------------------------------------------
+id              | INTEGER  | Auto-increment primary key
+userId          | INTEGER  | References users.id (no FK constraint)
+type            | STRING   | One of: transportation, electricity, food, shopping
+category        | STRING   | e.g., car, bus, beef, solar, secondhand
+value           | FLOAT    | Quantity (km, kWh, meals, items)
+unit            | STRING   | Display unit, default ''
+emission        | FLOAT    | Pre-calculated kg CO2
+notes           | STRING   | Optional, max 200 chars
+date            | DATE     | Defaults to now
+createdAt       | DATE     | Auto-managed
+updatedAt       | DATE     | Auto-managed
+
+Both models expose a virtual _id field (alias for id) for frontend compatibility.
+
+================================================================================
+7. BACKEND ARCHITECTURE
+================================================================================
+
+7.1 ENTRY POINT — backend/server.js
+------------------------------------
+The startServer() async function:
+  1. Calls connectDB() — authenticates SQLite, syncs Sequelize models
+  2. Creates Express app with:
+       - CORS (allowed origin: CLIENT_URL env var)
+       - JSON body parsing (10 MB limit)
+       - URL-encoded body parsing
+  3. Mounts routes:
+       /api/auth        → authRoutes
+       /api/activity    → activityRoutes
+       /api/emissions   → emissionRoutes
+       /api/ai          → aiRoutes
+  4. Health check: GET /api/health → { status: 'OK', timestamp }
+  5. 404 handler and global error handler
+  6. Listens on PORT (default 5000)
+
+7.2 CONFIGURATION
+-----------------
+backend/config/sequelize.js
+  Creates the Sequelize instance using SQLite dialect.
+  Stores the database at backend/data/ecobeacon.sqlite.
+  Ensures the data/ directory exists using fs.mkdirSync.
+
+backend/config/db.js
+  Calls sequelize.authenticate() to verify the connection.
+  Requires both model files (so Sequelize registers them).
+  Calls sequelize.sync() to create/update tables.
+  Calls process.exit(1) on failure.
+
+7.3 MODELS
+----------
+backend/models/User.js
+  Sequelize model. Notable details:
+  - password is never returned in API responses (excluded in queries)
+  - badges field uses a custom getter (JSON.parse) and setter (JSON.stringify)
+    so the controller always works with a plain JS array
+  - _id virtual field returns this.id for MongoDB-style frontend compatibility
+
+backend/models/Activity.js
+  Sequelize model.
+  - type is validated against the enum: [transportation, electricity, food, shopping]
+  - emission is stored at creation and is not recalculated on read
+  - _id virtual field returns this.id
+
+7.4 MIDDLEWARE
+--------------
+backend/middleware/authMiddleware.js — exports protect()
+
+  Steps:
+    1. Read Authorization header, extract Bearer token
+    2. Return 401 if no token
+    3. Verify token with jwt.verify(token, JWT_SECRET)
+    4. Find user by decoded.id, excluding the password field
+    5. Return 401 if user not found or token invalid
+    6. Attach user to req.user and call next()
+
+7.5 ROUTES
+----------
+Auth Routes (backend/routes/authRoutes.js)
+  POST   /api/auth/register    → register (public)
+  POST   /api/auth/login       → login (public)
+  GET    /api/auth/profile     → getProfile (protected)
+  PUT    /api/auth/profile     → updateProfile (protected)
+
+Activity Routes (backend/routes/activityRoutes.js)
+  POST   /api/activity/add          → addActivity (protected)
+  GET    /api/activity/user/:id     → getUserActivities (protected)
+  DELETE /api/activity/:id          → deleteActivity (protected)
+
+Emission Routes (backend/routes/emissionRoutes.js)
+  GET    /api/emissions/summary/:id → getEmissionSummary (protected)
+
+AI Routes (backend/routes/aiRoutes.js)
+  GET    /api/ai/suggestions/:userId → getSuggestions (protected)
+  GET    /api/ai/forecast/:userId    → getForecast (protected)
+  GET    /api/ai/anomalies/:userId   → getAnomalies (protected)
+  POST   /api/ai/chat                → chatResponse (protected)
+
+7.6 CONTROLLERS
+---------------
+authController.js
+  register(req, res)
+    - Validates: name, email, password all present
+    - Checks for duplicate email (returns 400 if taken)
+    - Hashes password: bcrypt.hash(password, 12)
+    - Creates user with ecoScore=50, streak=0, badges=[]
+    - Signs JWT with 30-day expiry
+    - Returns: { user: {...}, token }
+
+  login(req, res)
+    - Finds user by email (lowercase)
+    - Compares password with bcrypt.compare
+    - Signs JWT, returns { user: {...}, token }
+
+  getProfile(req, res)
+    - Returns req.user (already fetched by authMiddleware)
+
+  updateProfile(req, res)
+    - Only accepts name updates currently
+    - Updates and returns the refreshed user
+
+activityController.js
+  addActivity(req, res)
+    - Validates type, category, value (value must be > 0)
+    - Calls calculateEmission(type, category, value) from emissionService
+    - Creates Activity record
+    - Fetches all user activities to recalculate stats
+    - Calls calculateEcoScore, getBadges, updateStreak from ecoScore utils
+    - Updates User record (ecoScore, totalEmission, badges, streak, lastLogDate)
+    - Returns: { activity, ecoScore, totalEmission, streak, badges }
+
+  getUserActivities(req, res)
+    - Authorization: req.user.id must match req.params.id
+    - Query params: page (default 1), limit (default 20), type, startDate, endDate
+    - Returns: { activities, pagination: { total, page, pages } }
+
+  deleteActivity(req, res)
+    - Deletes activity by id
+    - Recalculates and saves new ecoScore and totalEmission for the user
+    - Returns: { message, ecoScore, totalEmission }
+
+emissionController.js
+  getEmissionSummary(req, res)
+    - Authorization check: user can only fetch their own summary
+    - Runs 4 parallel queries: today / last 7 days / current month / all time
+    - Returns:
+        summary:            { daily, weekly, monthly, total } in kg CO2
+        dailyBreakdown:     7-day array, each with total + per-type breakdown
+        monthlyBreakdown:   30-day array (same shape)
+        categoryBreakdown:  per-type totals with percentage (current month)
+        activityCount:      { today, week, month, total }
+
+aiController.js
+  getSuggestions(req, res)
+    - Fetches activities from the last 30 days
+    - Calls generateRecommendations(activities, ecoScore)
+    - Returns up to 6 suggestions
+
+  getForecast(req, res)
+    - Fetches activities from the last 30 days
+    - Calls forecastEmissions(activities, 7) and generateWeeklyGoals(activities, ecoScore)
+    - Returns: { forecast: [...], goals: [...] }
+
+  getAnomalies(req, res)
+    - Fetches activities from the last 30 days
+    - Calls detectAnomalies(activities)
+    - Returns: { anomalies: [...] }
+
+  chatResponse(req, res)
+    - Regex-based keyword dispatcher on req.body.message
+    - No activity data used; returns pre-written string responses
+    - See Section 9.5 for full keyword mapping
+
+7.7 SERVICES
+------------
+backend/services/emissionService.js
+  EMISSION_FACTORS: hardcoded lookup table (see Section 10 for full table)
+
+  calculateEmission(type, category, value)
+    - Looks up the factor for type+category
+    - Returns +(factor * value).toFixed(4) as a float
+    - Returns 0 if type or category is not found
+
+backend/services/aiService.js
+  See Section 9 for the full AI engine documentation.
+
+7.8 UTILITIES
+-------------
+backend/utils/ecoScore.js
+
+  calculateEcoScore(activities)
+    - Computes daily average emission across unique logged days
+    - Maps average to a base score:
+        ≤ 2 kg/day  → 95    ≤ 4 → 88    ≤ 6 → 78    ≤ 8 → 68
+        ≤ 12 → 56   ≤ 16 → 44  ≤ 20 → 33  ≤ 25 → 22  ≤ 30 → 15
+        > 30 → 10
+    - Adds consistency bonus (0–10 points): proportion of eco-friendly activities
+      (walking, bike, train, veg/vegan meals, eco-friendly/secondhand shopping)
+    - Clamps final score to 0–100
+
+  getScoreLabel(score)
+    - score ≥ 80 → "Excellent"
+    - score ≥ 50 → "Moderate"
+    - else       → "Needs Improvement"
+
+  getBadges(ecoScore, streak, totalActivities)
+    - Activity count milestones: 1 (First Step), 10 (Getting Started), 50 (Eco Warrior)
+    - Score thresholds:          60 (Green Thinker), 80 (Climate Hero), 90 (Eco Legend)
+    - Streak milestones:         3 days (3-Day Streak), 7 days (Week Warrior),
+                                 30 days (Monthly Master)
+
+  updateStreak(user)
+    - Compares lastLogDate to today (date only, no time)
+    - Same day    → no change (already logged today)
+    - Next day    → streak + 1
+    - Gap ≥ 2 days → reset to 1 (streak broken)
+    - Returns { streak, lastLogDate }
+
+7.9 SEED DATA — backend/seed/seedData.js
+-----------------------------------------
+  - Calls sequelize.sync({ force: true }) — DROPS all tables first
+  - Creates 3 demo users: alex, sam, jordan (all password: password123)
+  - Creates 30 activities per user randomly sampled from 18 templates:
+      car 20km, flight 1000km, bus 15km, train 50km, bike 10km,
+      electric car 30km, standard electricity 5kWh, solar electricity 10kWh,
+      beef meal, meat meal, veg meal, vegan meal, fish meal, fast food,
+      high-impact shopping, normal shopping, eco-friendly shopping, secondhand
+  - Activities are dated randomly across the past 30 days
+  - Eco scores and badges are calculated and saved after all activities are created
+
+================================================================================
+8. FRONTEND ARCHITECTURE
+================================================================================
+
+8.1 ENTRY POINT & APP SHELL
+-----------------------------
+frontend/index.html
+  Standard Vite HTML shell. Title: "EcoBeacon AI". Root: <div id="root">.
+
+frontend/src/main.jsx
+  React 18 createRoot. Mounts <App /> in StrictMode.
+
+frontend/vite.config.js
+  Dev server port: 5173
+  Proxy: all /api/* requests → http://localhost:5000
+  This allows api.js to use baseURL: '/api' without hardcoding the backend port.
+
+frontend/tailwind.config.js
+  Custom color palette: eco.50 through eco.950 (green shades)
+  Custom animations:
+    spin-slow   — slow rotation
+    pulse-slow  — slow pulse
+    fade-in     — slides up 10px + opacity 0→1 over 0.5s
+
+8.2 ROUTING & ROUTE GUARDS — frontend/src/App.jsx
+---------------------------------------------------
+Wraps the entire app in <BrowserRouter> and <AuthProvider>.
+
+ProtectedRoute component:
+  - Shows fullscreen LoadingSpinner while AuthContext is initializing
+  - Redirects to /login if user is null
+
+PublicRoute component:
+  - Redirects to /dashboard if user is already authenticated
+
+Route table:
+  /          → redirect to /dashboard
+  /login     → <Login />     (PublicRoute)
+  /register  → <Register />  (PublicRoute)
+  /dashboard → <Dashboard /> (ProtectedRoute)
+  /log       → <LogActivity />(ProtectedRoute)
+  /profile   → <Profile />   (ProtectedRoute)
+  *          → redirect to /dashboard
+
+The <AIChat /> floating chatbot is rendered globally outside the Routes block
+so it persists across page navigations. It is only shown when user is set.
+
+8.3 AUTH CONTEXT — frontend/src/context/AuthContext.jsx
+--------------------------------------------------------
+Provides global auth state via React Context + useContext hook.
+
+State:
+  user     — authenticated user object or null
+  token    — JWT string (initialized from localStorage 'eco_token' on mount)
+  loading  — true while the initial profile fetch is in-flight
+
+Methods:
+  login(email, password)
+    POST /auth/login → stores token in localStorage + sets user state
+
+  register(name, email, password)
+    POST /auth/register → same as login
+
+  logout()
+    Clears 'eco_token' from localStorage, sets user and token to null
+
+  refreshUser()
+    GET /auth/profile → updates user state
+    Called after logging an activity so the navbar eco score reflects the change
+
+On mount, if a token exists in localStorage, it calls GET /auth/profile to
+restore the session. Sets loading = false when done.
+
+8.4 API SERVICE — frontend/src/services/api.js
+-----------------------------------------------
+Axios instance configuration:
+  baseURL:  '/api'      (proxied by Vite to http://localhost:5000)
+  timeout:  10000ms
+
+Request interceptor:
+  Reads 'eco_token' from localStorage.
+  If found: adds Authorization: Bearer <token> header.
+
+Response interceptor (error handling):
+  On 401: removes 'eco_token' from localStorage, redirects to /login.
+  All other errors: re-thrown for the caller to handle.
+
+8.5 PAGES
+---------
+Login.jsx
+  Split-screen layout on large screens.
+  Left: branding + 3 feature highlights.
+  Right: email/password form + demo credentials shown inline.
+  On submit: calls useAuth().login, navigates to /dashboard.
+
+Register.jsx
+  Centered card with name, email, password, confirm-password fields.
+  Client-side validation: passwords must match, minimum 6 characters.
+  On submit: calls useAuth().register.
+
+Dashboard.jsx
+  Main logged-in view. On mount, runs 3 API calls in parallel:
+    GET /emissions/summary/:id   → stats cards + charts
+    GET /activity/user/:id?limit=10  → recent activity list
+    GET /ai/suggestions/:id      → SuggestionsPanel
+  Layout (responsive grid):
+    - Header: greeting + "Log Activity" button
+    - 4 StatsCards: Today / This Week / This Month / Eco Score
+    - EmissionChart (2/3 width) + EcoScoreGauge (1/3 width)
+    - ActivityBreakdown pie + SuggestionsPanel
+    - ForecastPanel + BadgesPanel
+    - Recent Activities list (last 6 items)
+
+LogActivity.jsx
+  Activity logging form, top to bottom:
+    1. NLPActivityParser — natural language input
+    2. AutoTracker — GPS tracker (only shown when type = transportation)
+    3. Activity type selector: 4 buttons (transportation/electricity/food/shopping)
+    4. Category grid (context-sensitive to selected type)
+    5. Value input with:
+         - Real-time emission preview
+         - Paris Agreement budget badge (% of 2.5 kg/day target)
+         - Smart pattern tip (compares value to user's average for that category)
+         - Expandable ImpactContext equivalency panel
+    6. Date picker + notes textarea
+    7. Submit / Cancel buttons
+  On success: shows celebration screen with new eco score + streak info,
+  then redirects to /dashboard after 2.5 seconds.
+
+Profile.jsx
+  Shows: avatar (initial letter colored by eco score), name (inline-editable),
+  email, score badge, streak badge, and 4 summary stats.
+  Left column:  BadgesPanel
+  Right column: Activity history (15 per page, paginated)
+  Delete button appears on hover over each activity row.
+  Delete triggers a confirmation modal, recalculates stats server-side.
+
+8.6 COMPONENTS
+--------------
+Navbar.jsx
+  Fixed top bar. Logo + nav links (Dashboard / Log Activity / Profile).
+  Active link is highlighted. Shows user name + eco score label.
+  Mobile: hamburger menu with dropdown.
+
+LoadingSpinner.jsx
+  Sizes: sm / md / lg.
+  fullScreen=true: renders a full-screen dark overlay with the leaf icon
+  and "Loading EcoBeacon..." text.
+
+StatsCard.jsx
+  Reusable metric card.
+  Props: title, value, unit, icon, color, subtitle, trend (optional up/down arrow).
+
+EcoScoreGauge.jsx
+  SVG arc gauge (custom, not a chart library).
+  240-degree arc with colored fill proportional to score.
+  Tick marks at 0, 25, 50, 75, 100.
+  Center: score number + label.
+  Color: green (≥80), amber (≥50), red (otherwise).
+  Below gauge: score band legend.
+
+EmissionChart.jsx
+  Recharts AreaChart — 7-day daily emission breakdown.
+  Toggle: "Stacked" (4 areas, one per type) | "Total" (single green area).
+  Custom tooltip: shows per-category values + total.
+
+ActivityBreakdown.jsx
+  Recharts PieChart (donut) — monthly emission split by category.
+  Percentage labels inside segments (hidden if < 5%).
+  Below chart: 2-column grid of category cards with value and percentage.
+
+SuggestionsPanel.jsx
+  Lists up to 6 AI suggestions.
+  Color-coded by priority: red = high, amber = medium, grey = low.
+  Clicking a card expands it to show full description + potential CO2 saving.
+
+ForecastPanel.jsx
+  Calls GET /ai/forecast/:userId on mount.
+  Shows trend icon (↑ / ↓ / →) + confidence level (high/medium/low).
+  Recharts AreaChart of 7-day predicted emissions.
+  Below chart: AI-generated weekly goals.
+
+BadgesPanel.jsx
+  Earned badges shown as 3-column gradient card grid, each with a glow color.
+  Locked placeholder shown when fewer than 4 badges are earned.
+  Streak displayed as a pill in the panel header.
+
+AIChat.jsx
+  Floating button (bottom-right) toggles a 480px-tall chat window.
+  Message state is local to the component (not persisted).
+  Quick-question chips above the input for common topics.
+  Sends POST /api/ai/chat with the message text.
+  Typing indicator: 3 bouncing dots while awaiting response.
+
+NLPActivityParser.jsx
+  Contains 40+ regex rules organized by activity type.
+  parseActivity(text) iterates rules, returns {type, category, value} on first match.
+  Collapsible example phrases panel.
+  Parsed result shows a preview with an "Apply" button that pre-fills the form.
+  Supported intents: car, flight, bike, walk, bus, train, motorcycle, EV,
+  standard/solar/wind electricity, beef, meat, fastfood, veg, vegan, dairy,
+  fish, shopping (items/secondhand/eco-friendly/electronics).
+
+AutoTracker.jsx
+  UI shell for the useGeoTracker hook.
+  Controls: Start / Stop / Reset.
+  Live stats: distance, speed, duration.
+  "AI Detected Mode" badge showing classified transport type.
+  On stop: "Use This Trip" button fills in distance + mode in the form.
+
+ImpactContext.jsx
+  Given emissionKg, renders 4 equivalency cards:
+    Trees needed:   emissionKg ÷ 0.058 kg/day
+    Phone charges:  emissionKg ÷ 0.008 kg
+    LED TV hours:   emissionKg ÷ 0.1 kg/hr
+    Hot showers:    emissionKg ÷ 0.5 kg
+  Two progress bars:
+    % of world average daily budget (7.5 kg/day)
+    % of Paris Agreement target    (2.5 kg/day)
+  Both bars are color-coded: green / amber / red.
+
+8.7 UTILITIES & HOOKS
+----------------------
+frontend/src/utils/helpers.js
+  ACTIVITY_CONFIG — full category config with labels, icons, units for the UI
+  EMISSION_FACTORS — client-side copy of the backend emission factor table
+  estimateEmission(type, category, value) — live emission preview calculation
+  formatEmission(value) — returns string with 2 decimal places
+  getScoreColor(score) / getScoreLabel(score) / getScoreEmoji(score)
+  getCategoryColor(type) / getCategoryIcon(type)
+
+frontend/src/utils/geoTracking.js
+  haversineDistance(lat1, lon1, lat2, lon2)
+    Great-circle distance in km between two GPS coordinates.
+
+  classifyTransportMode(speedHistory)
+    Weighted average of rolling speed window (recent readings weighted higher).
+    Classification thresholds:
+      < 1 km/h   → stationary
+      < 7 km/h   → walking
+      < 25 km/h  → cycling
+      < 60 km/h  → bus / city driving
+      < 130 km/h → car
+      < 350 km/h → train
+      ≥ 350 km/h → flight
+
+  formatDistance(km) / formatSpeed(kmh)
+
+frontend/src/hooks/useGeoTracker.js
+  Custom hook wrapping navigator.geolocation.watchPosition.
+  State machine: idle → requesting → tracking → stopped (or error)
+  GPS jitter filter: only accumulates distance when movement > 5 meters.
+  Rolling speed window of 8 readings for transport classifier.
+  1-second interval timer for duration display.
+  Exposed API:
+    status, distanceKm, currentSpeedKmh, detectedMode, duration, errorMsg
+    start(), stop(), reset()
+
+================================================================================
+9. AI / RECOMMENDATION ENGINE
+================================================================================
+
+All AI logic is in backend/services/aiService.js and the chat handler in
+backend/controllers/aiController.js. No external ML library or API is used.
+All logic is rule-based JavaScript operating on the user's last 30 days of data.
+
+9.1 RECOMMENDATION GENERATOR — generateRecommendations(activities, ecoScore)
+------------------------------------------------------------------------------
+Groups activities by type using groupByType(), then applies rules:
+
+Transportation Rules:
+  ≥ 3 car trips      → "Switch to Public Transport" (HIGH)
+                         saving = 60% of total car emissions
+  Any flights        → "Reduce Air Travel" (HIGH)
+                         saving = 80% of flight emissions
+  No eco trips but
+  ≥ 2 transport logs → "Try Walking or Cycling" (MEDIUM)
+
+Electricity Rules:
+  Total kWh > 15     → "Reduce Peak Hour Usage" (HIGH)
+                         saving = 12% of electricity emissions
+  Any electricity    → "Explore Renewable Energy" (MEDIUM)
+                         saving = 90% of electricity emissions
+
+Food Rules:
+  meat count >
+  veg count          → "Reduce Meat Consumption" (HIGH)
+                         saving = 65% of meat emissions
+  ≥ 3 fast food      → "Cook More at Home" (MEDIUM)
+                         saving = 60% of fast food emissions
+
+Shopping Rules:
+  Any high-impact    → "Choose Eco-Friendly Products" (MEDIUM)
+                         saving = 70% of high-impact emissions
+  ≥ 3 normal items   → "Try Secondhand Shopping" (LOW)
+                         saving = 80% of normal shopping emissions
+
+Score-based Rules:
+  ecoScore < 40      → prepends "Start Small — Big Impact" (HIGH)
+  ecoScore ≥ 80      → appends "Inspire Your Community" (LOW)
+
+Sorting & limit: sorted HIGH → MEDIUM → LOW, truncated to 6 suggestions.
+No data: 3 default onboarding suggestions returned.
+
+9.2 EMISSION FORECASTER — forecastEmissions(activities, days=7)
+----------------------------------------------------------------
+  1. Groups activities by date, builds a daily total map.
+  2. Calculates overall mean daily emission.
+  3. Splits day-series into two halves; computes average of each half.
+  4. Linear trend delta = (second half avg - first half avg) per day.
+  5. Generates N future date entries:
+       predicted[i] = max(0, mean + trendDelta * i)
+  6. Confidence:
+       ≥ 14 data days → "high"
+       ≥  7 data days → "medium"
+       else           → "low"
+  7. Trend label:
+       delta > 0.1  → "increasing"
+       delta < -0.1 → "decreasing"
+       else         → "stable"
+  Returns [] if no activity data exists.
+
+9.3 ANOMALY DETECTOR — detectAnomalies(activities)
+---------------------------------------------------
+Requires ≥ 5 activities. For each activity type independently:
+  1. Compute mean and standard deviation of emissions in that type.
+  2. Flag any activity where:
+       emission > mean + 2*stdDev   AND   emission > mean * 2
+  3. Attach message: "This [category] trip was 4.2× your usual average"
+Returns maximum 5 anomalies total.
+
+9.4 WEEKLY GOAL GENERATOR — generateWeeklyGoals(activities, ecoScore)
+----------------------------------------------------------------------
+Car travel:
+  Weekly avg km = total car km / 4
+  Target = 80% of avg
+  Saving = (avg - target) * 0.21 kg/km
+
+Meat meals:
+  Weekly avg count = total meat count / 4
+  Target = max(0, avg - 1)  (reduce by one meal per week, capped at 3)
+  Saving = 25% of weekly meat emissions
+
+Electricity:
+  Weekly avg kWh = total kWh / 4
+  Target = 90% of avg
+  Saving = (avg - target) * 0.85 kg/kWh
+
+ecoScore < 60:
+  Adds "Boost Eco Score by 10 Points" goal.
+
+Returns maximum 3 goals.
+
+9.5 RULE-BASED CHAT BOT — chatResponse in aiController.js
+-----------------------------------------------------------
+Regex keyword dispatcher on lowercased message text:
+
+Pattern                              | Topic
+-------------------------------------+--------------------------------------
+/biggest|largest|most emission/      | Emission sources breakdown
+/reduce.*transport|car|driv/         | Transport reduction tips
+/reduce.*food|eat|diet/              | Food and diet tips
+/electricity|energy|power/           | Energy efficiency tips
+/score|eco score/                    | Eco Score explanation
+/badge|streak|achievement/           | Gamification explanation
+/paris|climate|global|target/        | Paris Agreement context
+/hello|hi|hey|help/                  | Greeting
+/flight|fly|travel|air/              | Aviation tips
+/shopping|buy|purchase/              | Shopping tips
+(no match)                           | Generic "I can help with..." fallback
+
+================================================================================
+10. EMISSION FACTOR REFERENCE
+================================================================================
+
+Type            | Category        | Factor        | Unit
+----------------+-----------------+---------------+------------------
+transportation  | car             | 0.210 kg      | per km
+transportation  | motorcycle      | 0.103 kg      | per km
+transportation  | bus             | 0.089 kg      | per km
+transportation  | train           | 0.041 kg      | per km
+transportation  | flight          | 0.255 kg      | per km
+transportation  | bike            | 0.005 kg      | per km
+transportation  | walking         | 0.000 kg      | per km
+transportation  | electric_car    | 0.053 kg      | per km
+electricity     | standard        | 0.850 kg      | per kWh
+electricity     | solar           | 0.041 kg      | per kWh
+electricity     | wind            | 0.011 kg      | per kWh
+food            | beef            | 6.610 kg      | per meal
+food            | meat            | 5.000 kg      | per meal
+food            | fish            | 2.800 kg      | per meal
+food            | fastfood        | 3.500 kg      | per meal
+food            | dairy           | 2.100 kg      | per meal
+food            | veg             | 1.500 kg      | per meal
+food            | vegan           | 0.900 kg      | per meal
+shopping        | high-impact     | 5.000 kg      | per item
+shopping        | normal          | 2.000 kg      | per item
+shopping        | eco-friendly    | 0.500 kg      | per item
+shopping        | secondhand      | 0.200 kg      | per item
+
+The same table is duplicated on the frontend (frontend/src/utils/helpers.js)
+for live emission previews in the LogActivity form.
+
+================================================================================
+11. API ENDPOINT REFERENCE
+================================================================================
+
+All authenticated endpoints require: Authorization: Bearer <token>
+
+AUTH
+----
+POST   /api/auth/register
+  Body:    { name, email, password }
+  Returns: { user, token }
+  Errors:  400 (missing fields), 400 (email taken)
+
+POST   /api/auth/login
+  Body:    { email, password }
+  Returns: { user, token }
+  Errors:  400 (invalid credentials)
+
+GET    /api/auth/profile        [auth required]
+  Returns: { user }
+
+PUT    /api/auth/profile        [auth required]
+  Body:    { name }
+  Returns: { user }
+
+ACTIVITIES
+----------
+POST   /api/activity/add        [auth required]
+  Body:    { type, category, value, notes?, date? }
+  Returns: { activity, ecoScore, totalEmission, streak, badges }
+  Errors:  400 (validation), 400 (unknown category)
+
+GET    /api/activity/user/:id   [auth required]
+  Query params: page, limit, type, startDate, endDate
+  Returns: { activities, pagination }
+  Errors:  403 (accessing another user's data)
+
+DELETE /api/activity/:id        [auth required]
+  Returns: { message, ecoScore, totalEmission }
+  Errors:  404 (not found), 403 (not owner)
+
+EMISSIONS
+---------
+GET    /api/emissions/summary/:id  [auth required]
+  Returns:
+    summary:            { daily, weekly, monthly, total }
+    dailyBreakdown:     array[7] — { date, total, transportation, electricity, food, shopping }
+    monthlyBreakdown:   array[30] — same shape
+    categoryBreakdown:  array — { type, total, percentage }
+    activityCount:      { today, week, month, total }
+  Errors: 403 (accessing another user's data)
+
+AI
+--
+GET    /api/ai/suggestions/:userId  [auth required]
+  Returns: { suggestions: [{ title, description, priority, potentialSaving, category }] }
+
+GET    /api/ai/forecast/:userId     [auth required]
+  Returns:
+    forecast:  [{ date, predicted }]
+    goals:     [{ title, target, currentAvg, unit, potentialSaving }]
+    trend:     "increasing" | "decreasing" | "stable"
+    confidence:"high" | "medium" | "low"
+
+GET    /api/ai/anomalies/:userId    [auth required]
+  Returns: { anomalies: [{ ...activity, message }] }
+
+POST   /api/ai/chat                 [auth required]
+  Body:    { message: string }
+  Returns: { reply: string }
+
+HEALTH
+------
+GET    /api/health
+  Returns: { status: "OK", timestamp }
+
+================================================================================
+12. ECO SCORE & GAMIFICATION
+================================================================================
+
+ECO SCORE (0–100)
+-----------------
+Base score derived from average daily emission (all-time):
+  ≤ 2 kg/day  → 95    |   ≤ 12 → 56   |   ≤ 25 → 22
+  ≤ 4         → 88    |   ≤ 16 → 44   |   ≤ 30 → 15
+  ≤ 6         → 78    |   ≤ 20 → 33   |   > 30 → 10
+  ≤ 8         → 68    |
+
+Consistency bonus (0–10): proportion of eco-friendly activities:
+  Eco-friendly types: walking, bike, train, veg/vegan meals,
+                      eco-friendly and secondhand shopping
+
+Final score = base + bonus, clamped to [0, 100].
+
+Score labels:
+  ≥ 80 → "Excellent"
+  ≥ 50 → "Moderate"
+  else → "Needs Improvement"
+
+BADGES
+------
+Activity Count:
+  1 activity   → "First Step"
+  10 activities → "Getting Started"
+  50 activities → "Eco Warrior"
+
+Eco Score:
+  score ≥ 60 → "Green Thinker"
+  score ≥ 80 → "Climate Hero"
+  score ≥ 90 → "Eco Legend"
+
+Streak:
+  3 days  → "3-Day Streak"
+  7 days  → "Week Warrior"
+  30 days → "Monthly Master"
+
+STREAKS
+-------
+A streak is the number of consecutive calendar days on which at least one
+activity has been logged.
+  - Logging on the same day does not increment the streak.
+  - Logging on the next calendar day increments streak by 1.
+  - Any gap of ≥ 2 days resets the streak to 1.
+
+================================================================================
+13. KNOWN NOTES & DESIGN DECISIONS
+================================================================================
+
+SQLite over MongoDB
+  Despite README.md and .env.example referencing MongoDB/Mongoose, the actual
+  implementation uses SQLite + Sequelize. This makes the app zero-infrastructure
+  — no database server is needed; the .sqlite file is created automatically.
+
+_id Virtual Fields
+  Both User and Activity models expose a _id virtual field aliasing the integer
+  primary key. This allows frontend code written in a MongoDB-compatible style
+  to work transparently with Sequelize integer PKs.
+
+Duplicate Emission Factors
+  EMISSION_FACTORS is defined in both backend/services/emissionService.js and
+  frontend/src/utils/helpers.js. The backend is authoritative for stored values;
+  the frontend copy enables live previews without an API roundtrip.
+
+No External AI
+  OPENAI_API_KEY appears in .env.example but is never consumed. All "AI" features
+  (NLP parser, GPS classifier, forecasting, anomaly detection, chat) are built
+  from scratch as rule-based JavaScript logic.
+
+JWT in localStorage
+  Token key: 'eco_token'. The Axios response interceptor automatically clears it
+  and redirects to /login on any 401 response.
+
+User Authorization Pattern
+  Both activityController and emissionController explicitly check
+  req.user.id === parseInt(req.params.id) before returning data. This prevents
+  one authenticated user from accessing another user's data via URL manipulation.
+
+Seed Script Warning
+  seedData.js uses sequelize.sync({ force: true }), which drops and recreates
+  all tables. Never run npm run seed on a database with real production data.
+
+================================================================================
+                              END OF DOCUMENTATION
+================================================================================
