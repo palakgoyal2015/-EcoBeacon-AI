@@ -480,7 +480,7 @@ backend/utils/ecoScore.js
       beef meal, meat meal, veg meal, vegan meal, fish meal, fast food,
       high-impact shopping, normal shopping, eco-friendly shopping, secondhand
   - Activities are dated randomly across the past 30 days
-  - Eco scores and badges are calculated and saved after all activities are created
+  - Eco scores and badges are calculated and saved after all activities are create
 
 ================================================================================
 8. FRONTEND ARCHITECTURE
